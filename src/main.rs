@@ -212,10 +212,11 @@ fn parse_expression(
                 expression = Some(Expression::Float(float));
             }
             TokenTreePass1::NestExpr(mut tokens) => {
-                if tokens.iter().any(is_separator) {
+                if tokens.is_empty() || tokens.iter().any(is_separator) {
                     let elements: Result<Vec<Expression>, anyhow::Error> =
                         tokens
                             .split_mut(is_separator)
+                            .filter(|tokens| !tokens.is_empty())
                             .map(|tokens| {
                                 // TODO avoid unnecessary clone here
                                 let tokens: Vec<TokenTreePass1> =
