@@ -7,9 +7,13 @@ use logos::Logos;
 #[derive(Debug, clap::Parser)]
 #[clap(version, propagate_version = true)]
 struct Cli {
-    /// One or more Penne source files
+    /// One or more Numpad source files
     #[clap(value_parser, required(true))]
     filepaths: Vec<std::path::PathBuf>,
+
+    /// Show a lot of intermediate output
+    #[clap(short, long)]
+    verbose: bool,
 }
 
 fn main() -> Result<(), anyhow::Error> {
@@ -23,58 +27,57 @@ fn main() -> Result<(), anyhow::Error> {
     let mut prev_num = false;
     let mut current_token_tree: Vec<TokenTreePass1> = vec![];
     let mut defer_nest: Vec<Vec<TokenTreePass1>> = vec![];
-    while let Some(t) = lex.next() {
-        if t == Token::Error {
-            println!("\t{:?}\t| {t:?} ", lex.slice())
-        } else {
-            print!("\n{:?}\t| {t:?} ", lex.slice().trim())
+    while let Some(token) = lex.next() {
+        if args.verbose {
+            if token == Token::Error {
+                println!("\n{:?}\t| {token:?} ", lex.slice())
+            } else {
+                print!("\n{:?}\t| {token:?} ", lex.slice().trim())
+            }
         }
-        macro_rules! separator_warning {
-            () => {
-                "Unstructured, expected separator"
-            };
-        }
-        use Token::*;
-        let mut operator = |x, y| {
+        let mut operator = |x, y| -> Result<(), anyhow::Error> {
             if definition_end {
-                panic!(separator_warning!())
+                Err(Error::ExpectedSeparator)?;
             };
             prev_num = false;
             current_token_tree.push(if prev_num {
                 TokenTreePass1::Binary(x)
             } else {
                 TokenTreePass1::Unary(y)
-            })
+            });
+            Ok(())
         };
-        match t {
-            Fetch_Mul => operator(Binary::Mult, Unary::Fetch),
-            Signum_Plus => operator(Binary::Plus, Unary::Signum),
-            Negate_Assign => operator(Binary::Assign, Unary::Neg),
-            Reciprocal_CallWith => operator(Binary::CallWith, Unary::Recip),
+        match token {
+            Token::Star => operator(Binary::Mult, Unary::Fetch)?,
+            Token::Plus => operator(Binary::Plus, Unary::Signum)?,
+            Token::Minus => operator(Binary::Assign, Unary::Neg)?,
+            Token::Slash => operator(Binary::CallWith, Unary::Recip)?,
 
-            OpenExpr => {
+            Token::OpenExpr => {
                 if prev_num || definition_end {
-                    panic!(separator_warning!())
+                    Err(Error::ExpectedSeparator)?;
                 };
                 defer_nest.push(core::mem::take(&mut current_token_tree))
             }
-            CloseExpr => {
+            Token::CloseExpr => {
                 if definition_end {
-                    panic!(separator_warning!())
+                    Err(Error::ExpectedSeparator)?;
                 };
-                let last = defer_nest.last_mut().expect("Unbalanced delimitor");
+                let last = defer_nest
+                    .last_mut()
+                    .ok_or_else(|| Error::UnbalancedDelimiter)?;
                 last.push(TokenTreePass1::NestExpr(core::mem::take(
                     &mut current_token_tree,
                 )));
                 core::mem::swap(last, &mut current_token_tree);
                 defer_nest.pop().unwrap();
             }
-            Separator => {
+            Token::Separator => {
                 definition_end = false;
                 prev_num = false;
                 current_token_tree.push(TokenTreePass1::Sep)
             }
-            Number => {
+            Token::Number => {
                 if definition_end {
                     tree.push(LabelPass1(core::mem::take(
                         &mut current_token_tree,
@@ -84,57 +87,61 @@ fn main() -> Result<(), anyhow::Error> {
                 prev_num = true;
                 let src: String = lex.slice().split_whitespace().collect();
                 current_token_tree.push(if src.contains(".") {
-                    src.parse()
-                        .map(TokenTreePass1::Float)
-                        .expect("Logos Checked")
+                    src.parse().map(TokenTreePass1::Float)?
                 } else {
-                    src.parse().map(TokenTreePass1::Int).expect("Logos Checked")
+                    src.parse().map(TokenTreePass1::Int)?
                 })
             }
-            Enter => {
+            Token::Enter => {
                 definition_end = true;
             }
-            Error if lex.slice().trim() == "" => {}
-            Error => {
-                if !lex.slice().starts_with('(') {
-                    panic!("Unstructured")
-                }
-            } // )
+            Token::Error if lex.slice().trim() == "" => {}
+            Token::Error if lex.slice().starts_with('(') => {}
+            Token::Error => Err(Error::Unstructured)?,
         }
     }
-
     tree.push(LabelPass1(core::mem::take(&mut current_token_tree)));
-    for LabelPass1(l) in tree.iter() {
-        {
-            println!("Label : ")
-        };
-        for i in l.iter() {
-            println!("\t{i:?}")
+
+    if args.verbose {
+        println!();
+        println!();
+        for LabelPass1(l) in tree.iter() {
+            {
+                println!("Label : ")
+            };
+            for i in l.iter() {
+                println!("\t{i:?}")
+            }
         }
     }
     Ok(())
 }
 
-#[allow(non_camel_case_types)]
 #[derive(Logos, Debug, PartialEq)]
 enum Token {
-    // unary operators
+    // Operators
     #[regex(r"\*[ \t]*")]
-    Fetch_Mul,
+    Star,
     #[regex(r"\+[ \t]*")]
-    Signum_Plus,
+    Plus,
     #[regex(r"\-[ \t]*")]
-    Negate_Assign,
+    Minus,
     #[regex(r"/[ \t]*")]
-    Reciprocal_CallWith,
+    Slash,
+
+    // Structurals
     #[regex(r"/\.[ \t]*")]
     OpenExpr,
     #[regex(r"\./[ \t]*")]
     CloseExpr,
     #[regex(r"\.\.[ \t]*")]
     Separator,
+
+    // Literals
     #[regex(r"[0-9][0-9 \t]*(\.[0-9 \t]+)?")]
     Number,
+
+    // Display
     #[token("\n")]
     Enter,
     #[error]
@@ -143,7 +150,9 @@ enum Token {
 }
 
 type Integral = usize;
+
 type Float = f64;
+
 #[derive(Debug)]
 enum Unary {
     Fetch,
@@ -171,4 +180,14 @@ enum TokenTreePass1 {
     Unary(Unary),
     Binary(Binary),
     Sep,
+}
+
+#[derive(Debug, thiserror::Error)]
+enum Error {
+    #[error("Unbalanced delimiter")]
+    UnbalancedDelimiter,
+    #[error("Unstructured, expected separator")]
+    ExpectedSeparator,
+    #[error("Unstructured")]
+    Unstructured,
 }

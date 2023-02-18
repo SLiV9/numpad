@@ -7,3 +7,4 @@ edition = "2021"
 logos = "0.12.1"
 clap = { version = "4.0", features = ["derive"] }
 anyhow = "1.0"
+thiserror = "1.0"
