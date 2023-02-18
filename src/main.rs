@@ -1,5 +1,11 @@
 /**/
 
+mod common;
+mod machine;
+
+use crate::common::*;
+use crate::machine::Machine;
+
 use anyhow::Context;
 use clap::Parser;
 use itertools::Itertools;
@@ -23,7 +29,8 @@ fn main() -> Result<(), anyhow::Error> {
     let source = std::fs::read_to_string(&filepath)?;
     let tokens = lex(&source, args.verbose)?;
     let instructions = parse(tokens, args.verbose)?;
-
+    let output = evaluate(instructions, args.verbose)?;
+    println!("Output: {:?}", output);
     Ok(())
 }
 
@@ -164,21 +171,17 @@ fn parse_instruction(
         let expression = parse_expression(tokens, verbose)?;
         intermediates.push(expression);
     }
-    let result = intermediates
-        .pop()
-        .ok_or_else(|| Error::ExpectedExpression)?;
-    if verbose {
-        println!("{}:", label);
-        for intermediate in &intermediates {
-            println!("\t\t{:?}", intermediate);
-        }
-        println!("\t{:?}", result);
-    }
-    let instruction = Instruction {
-        label,
-        intermediates,
-        result,
+    let expression = if intermediates.len() > 1 {
+        Expression::Sequence(intermediates.into())
+    } else {
+        intermediates
+            .pop()
+            .ok_or_else(|| Error::ExpectedExpression)?
     };
+    if verbose {
+        println!("{}:\t{:?}", label, expression);
+    }
+    let instruction = Instruction { label, expression };
     Ok(instruction)
 }
 
@@ -206,10 +209,10 @@ fn parse_expression(
             }
             _ if expression.is_some() => Err(Error::ExpectedOperator)?,
             TokenTreePass1::Int(integral) => {
-                expression = Some(Expression::Int(integral));
+                expression = Some(Expression::Number(integral as Float));
             }
             TokenTreePass1::Float(float) => {
-                expression = Some(Expression::Float(float));
+                expression = Some(Expression::Number(float));
             }
             TokenTreePass1::NestExpr(mut tokens) => {
                 if tokens.is_empty() || tokens.iter().any(is_separator) {
@@ -251,6 +254,15 @@ fn is_separator(token: &TokenTreePass1) -> bool {
     }
 }
 
+fn evaluate(
+    program: Vec<Instruction>,
+    verbose: bool,
+) -> Result<Expression, anyhow::Error> {
+    let mut machine = Machine::create(program, verbose);
+    let answer = machine.evaluate_until_finished(1);
+    Ok(answer)
+}
+
 #[derive(Logos, Debug, PartialEq)]
 enum Token {
     // Operators
@@ -283,26 +295,6 @@ enum Token {
     Error,
 }
 
-type Integral = usize;
-
-type Float = f64;
-
-#[derive(Debug, Clone, Copy)]
-enum Unary {
-    Fetch,
-    Signum,
-    Neg,
-    Recip,
-}
-
-#[derive(Debug, Clone, Copy)]
-enum Binary {
-    Plus,
-    Mult,
-    Assign,
-    CallWith,
-}
-
 #[derive(Debug)]
 struct LabelPass1(Vec<TokenTreePass1>);
 
@@ -314,29 +306,6 @@ enum TokenTreePass1 {
     Unary(Unary),
     Binary(Binary),
     Sep,
-}
-
-#[derive(Debug)]
-struct Instruction {
-    label: Integral,
-    intermediates: Vec<Expression>,
-    result: Expression,
-}
-
-#[derive(Debug)]
-enum Expression {
-    Int(Integral),
-    Float(Float),
-    List(Vec<Expression>),
-    Unary {
-        operator: Unary,
-        operand: Box<Expression>,
-    },
-    Binary {
-        operator: Binary,
-        left: Box<Expression>,
-        right: Box<Expression>,
-    },
 }
 
 #[derive(Debug, thiserror::Error)]
