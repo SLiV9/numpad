@@ -20,15 +20,21 @@ fn main() -> Result<(), anyhow::Error> {
     let args = Cli::parse();
     let filepath = &args.filepaths.get(0).context("missing argument")?;
     let source = std::fs::read_to_string(&filepath)?;
+    let tokens = lex(&source, args.verbose)?;
+    let instructions = parse(tokens, args.verbose)?;
 
-    let mut lex: logos::Lexer<Token> = Token::lexer(&source);
+    Ok(())
+}
+
+fn lex(source: &str, verbose: bool) -> Result<Vec<LabelPass1>, anyhow::Error> {
+    let mut lex: logos::Lexer<Token> = Token::lexer(source);
     let mut definition_end = false;
     let mut tree: Vec<LabelPass1> = vec![];
     let mut prev_num = false;
     let mut current_token_tree: Vec<TokenTreePass1> = vec![];
     let mut defer_nest: Vec<Vec<TokenTreePass1>> = vec![];
     while let Some(token) = lex.next() {
-        if args.verbose {
+        if verbose {
             if token == Token::Error {
                 println!("\n{:?}\t| {token:?} ", lex.slice())
             } else {
@@ -39,12 +45,12 @@ fn main() -> Result<(), anyhow::Error> {
             if definition_end {
                 Err(Error::ExpectedSeparator)?;
             };
-            prev_num = false;
             current_token_tree.push(if prev_num {
                 TokenTreePass1::Binary(x)
             } else {
                 TokenTreePass1::Unary(y)
             });
+            prev_num = false;
             Ok(())
         };
         match token {
@@ -102,19 +108,143 @@ fn main() -> Result<(), anyhow::Error> {
     }
     tree.push(LabelPass1(core::mem::take(&mut current_token_tree)));
 
-    if args.verbose {
+    if verbose {
         println!();
         println!();
-        for LabelPass1(l) in tree.iter() {
+        for LabelPass1(tokens) in tree.iter() {
             {
                 println!("Label : ")
             };
-            for i in l.iter() {
+            for i in tokens.iter() {
                 println!("\t{i:?}")
             }
         }
     }
-    Ok(())
+    Ok(tree)
+}
+
+fn parse(
+    labels: Vec<LabelPass1>,
+    verbose: bool,
+) -> Result<Vec<Instruction>, anyhow::Error> {
+    if verbose {
+        println!();
+        println!();
+    }
+    labels
+        .into_iter()
+        .filter(|LabelPass1(tokens)| !tokens.is_empty())
+        .map(|LabelPass1(tokens)| parse_instruction(tokens, verbose))
+        .collect()
+}
+
+fn parse_instruction(
+    tokens: Vec<TokenTreePass1>,
+    verbose: bool,
+) -> Result<Instruction, anyhow::Error> {
+    let mut tokens = tokens.into_iter();
+    let label = match tokens.next() {
+        Some(TokenTreePass1::Int(label)) => label,
+        Some(_) => Err(Error::InvalidLabel)?,
+        None => unreachable!(),
+    };
+    let mut intermediates = Vec::new();
+    while let Some(separator) = tokens.next() {
+        match separator {
+            TokenTreePass1::Sep => (),
+            _ => Err(Error::ExpectedSeparator)?,
+        }
+        let tokens = tokens.by_ref().take_while(|token| !is_separator(token));
+        let expression = parse_expression(tokens, verbose)?;
+        intermediates.push(expression);
+    }
+    let result = intermediates
+        .pop()
+        .ok_or_else(|| Error::ExpectedExpression)?;
+    if verbose {
+        println!("{}:", label);
+        for intermediate in &intermediates {
+            println!("\t\t{:?}", intermediate);
+        }
+        println!("\t{:?}", result);
+    }
+    let instruction = Instruction {
+        label,
+        intermediates,
+        result,
+    };
+    Ok(instruction)
+}
+
+fn parse_expression(
+    mut tokens: impl std::iter::Iterator<Item = TokenTreePass1>,
+    verbose: bool,
+) -> Result<Expression, anyhow::Error> {
+    let mut expression = None;
+    let mut stacked_unaries = Vec::new();
+    while let Some(token) = tokens.next() {
+        match token {
+            TokenTreePass1::Unary(unary) => {
+                stacked_unaries.push(unary);
+            }
+            TokenTreePass1::Binary(_) if !stacked_unaries.is_empty() => {
+                Err(Error::ExpectedExpression)?
+            }
+            TokenTreePass1::Binary(binary) => {
+                let left =
+                    expression.ok_or_else(|| Error::ExpectedExpression)?;
+                let right = parse_expression(tokens, verbose)?;
+                expression = Some(Expression::Binary {
+                    operator: binary,
+                    left: Box::new(left),
+                    right: Box::new(right),
+                });
+                break;
+            }
+            _ if expression.is_some() => Err(Error::ExpectedOperator)?,
+            TokenTreePass1::Int(integral) => {
+                expression = Some(Expression::Int(integral));
+            }
+            TokenTreePass1::Float(float) => {
+                expression = Some(Expression::Float(float));
+            }
+            TokenTreePass1::NestExpr(mut tokens) => {
+                if tokens.iter().any(is_separator) {
+                    let elements: Result<Vec<Expression>, anyhow::Error> =
+                        tokens
+                            .split_mut(is_separator)
+                            .map(|tokens| {
+                                // TODO avoid unnecessary clone here
+                                let tokens: Vec<TokenTreePass1> =
+                                    tokens.to_vec();
+                                parse_expression(tokens.into_iter(), verbose)
+                            })
+                            .collect();
+                    let elements = elements?;
+                    expression = Some(Expression::List(elements));
+                } else {
+                    let inner = parse_expression(tokens.into_iter(), verbose)?;
+                    expression = Some(inner);
+                }
+            }
+            TokenTreePass1::Sep => Err(Error::ExpectedOperator)?,
+        }
+    }
+    let mut expression = expression.ok_or_else(|| Error::ExpectedExpression)?;
+    while let Some(unary) = stacked_unaries.pop() {
+        expression = Expression::Unary {
+            operator: unary,
+            operand: Box::new(expression),
+        };
+    }
+    Ok(expression)
+}
+
+fn is_separator(token: &TokenTreePass1) -> bool {
+    match token {
+        TokenTreePass1::Sep => true,
+        _ => false,
+    }
 }
 
 #[derive(Logos, Debug, PartialEq)]
@@ -153,7 +283,7 @@ type Integral = usize;
 
 type Float = f64;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum Unary {
     Fetch,
     Signum,
@@ -161,7 +291,7 @@ enum Unary {
     Recip,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum Binary {
     Plus,
     Mult,
@@ -172,7 +302,7 @@ enum Binary {
 #[derive(Debug)]
 struct LabelPass1(Vec<TokenTreePass1>);
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum TokenTreePass1 {
     Int(Integral),
     Float(Float),
@@ -182,12 +312,41 @@ enum TokenTreePass1 {
     Sep,
 }
 
+#[derive(Debug)]
+struct Instruction {
+    label: Integral,
+    intermediates: Vec<Expression>,
+    result: Expression,
+}
+
+#[derive(Debug)]
+enum Expression {
+    Int(Integral),
+    Float(Float),
+    List(Vec<Expression>),
+    Unary {
+        operator: Unary,
+        operand: Box<Expression>,
+    },
+    Binary {
+        operator: Binary,
+        left: Box<Expression>,
+        right: Box<Expression>,
+    },
+}
+
 #[derive(Debug, thiserror::Error)]
 enum Error {
     #[error("Unbalanced delimiter")]
     UnbalancedDelimiter,
-    #[error("Unstructured, expected separator")]
+    #[error("Expected separator")]
     ExpectedSeparator,
+    #[error("Expected expression")]
+    ExpectedExpression,
+    #[error("Expected binary operator")]
+    ExpectedOperator,
     #[error("Unstructured")]
     Unstructured,
+    #[error("Invalid label, must be integral")]
+    InvalidLabel,
 }
