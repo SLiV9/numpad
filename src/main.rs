@@ -2,6 +2,7 @@
 
 use anyhow::Context;
 use clap::Parser;
+use itertools::Itertools;
 use logos::Logos;
 
 #[derive(Debug, clap::Parser)]
@@ -142,7 +143,10 @@ fn parse_instruction(
     tokens: Vec<TokenTreePass1>,
     verbose: bool,
 ) -> Result<Instruction, anyhow::Error> {
-    let mut tokens = tokens.into_iter();
+    //if verbose {
+    //    println!("{:?} =>", tokens);
+    //}
+    let mut tokens = tokens.into_iter().peekable();
     let label = match tokens.next() {
         Some(TokenTreePass1::Int(label)) => label,
         Some(_) => Err(Error::InvalidLabel)?,
@@ -152,9 +156,11 @@ fn parse_instruction(
     while let Some(separator) = tokens.next() {
         match separator {
             TokenTreePass1::Sep => (),
-            _ => Err(Error::ExpectedSeparator)?,
+            other => Err(Error::ExpectedSeparatorInInsruction { got: other })?,
         }
-        let tokens = tokens.by_ref().take_while(|token| !is_separator(token));
+        let tokens = tokens
+            .by_ref()
+            .peeking_take_while(|token| !is_separator(token));
         let expression = parse_expression(tokens, verbose)?;
         intermediates.push(expression);
     }
@@ -187,12 +193,9 @@ fn parse_expression(
             TokenTreePass1::Unary(unary) => {
                 stacked_unaries.push(unary);
             }
-            TokenTreePass1::Binary(_) if !stacked_unaries.is_empty() => {
-                Err(Error::ExpectedExpression)?
-            }
             TokenTreePass1::Binary(binary) => {
-                let left =
-                    expression.ok_or_else(|| Error::ExpectedExpression)?;
+                let left = expression
+                    .ok_or_else(|| Error::ExpectedExpressionBeforeBinary)?;
                 let right = parse_expression(tokens, verbose)?;
                 expression = Some(Expression::Binary {
                     operator: binary,
@@ -341,8 +344,12 @@ enum Error {
     UnbalancedDelimiter,
     #[error("Expected separator")]
     ExpectedSeparator,
+    #[error("Expected separator, got {got:?}")]
+    ExpectedSeparatorInInsruction { got: TokenTreePass1 },
     #[error("Expected expression")]
     ExpectedExpression,
+    #[error("Expected expression before binary operator")]
+    ExpectedExpressionBeforeBinary,
     #[error("Expected binary operator")]
     ExpectedOperator,
     #[error("Unstructured")]
