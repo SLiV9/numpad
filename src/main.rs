@@ -60,7 +60,7 @@ fn main() -> Result<(), anyhow::Error> {
         let tokens = lexer::lex(&source)?;
         let instructions = parser::parse(tokens)?;
         let output = evaluate(instructions, machine)?;
-        println!("Output: {:?}", output);
+        println!("Output: {}", output);
     }
 
     if repl {
@@ -101,7 +101,7 @@ fn main() -> Result<(), anyhow::Error> {
             };
             // print
             let output = evaluate(instructions, machine)?;
-            println!("Output: {:?}", output);
+            println!("Output: {}", output);
             // loop
         }
     }

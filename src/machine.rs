@@ -317,13 +317,11 @@ impl Machine {
                     let expr = Expression::Number(-number);
                     self.solve(expr);
                 }
-                Expression::List(_) => {
-                    // TODO maybe list reversal?
-                    unimplemented!()
+                Expression::List(l) => {
+                    self.solve(Expression::Number(l.len()as Float))
                 }
-                Expression::PointerIntoList { .. } => {
-                    // This has to match the behavior above.
-                    unimplemented!()
+                Expression::PointerIntoList { address, offset  } => {
+                    self.solve(self.get_list_len(address, offset))
                 }
                 Expression::Sequence(_)
                 | Expression::Unary { .. }
@@ -393,13 +391,12 @@ impl Machine {
             Unary::Print => match operand {
                 Expression::Undefined => self.solve(Expression::Undefined),
                 Expression::Number(number) => {
-                    // TODO do we need to handle divide by zero?
                     let c: u32 = number.round().abs() as u32;
                     print!("{}", unsafe { char::from_u32_unchecked(c) });
                     self.solve(operand);
                 }
                 Expression::List(_) => {
-                    // TODO ???
+                    // lists are lazy
                     unimplemented!()
                 }
                 Expression::PointerIntoList { .. } => {
@@ -428,14 +425,29 @@ impl Machine {
                     Expression::Number(b) => {
                         self.solve(Expression::Number(a + b));
                     }
-                    Expression::List(_) => {
-                        // TODO ???
-                        unimplemented!()
+                    Expression::List(mut elements) => {
+                        if let Some(offset) = self.address_from_number(a) {
+                            elements.splice(0..offset, std::iter::empty());
+                            let shifted = Expression::List(elements);
+                            self.solve(shifted);
+                        } else {
+                            self.solve(Expression::Undefined);
+                        }
                     }
-                    Expression::PointerIntoList { .. } => {
-                        // This has to match the behavior above.
-                        unimplemented!()
-                    }
+                    Expression::PointerIntoList { address, offset } => {
+                        // Drop the first NUM elements from the list.
+                        if let Some(skipped) =
+                            self.address_from_number(a)
+                        {
+                            let shifted = Expression::PointerIntoList {
+                                address,
+                                offset: offset + skipped,
+                            };
+                            self.solve(shifted);
+                        } else {
+                            self.solve(Expression::Undefined);
+                        }
+                }
                     Expression::Sequence(_)
                     | Expression::Unary { .. }
                     | Expression::Binary { .. }
@@ -604,6 +616,20 @@ impl Machine {
             ),
             Some(expr) => {
                 error!("Cannot copy non-list: {}", expr);
+                Expression::Undefined
+            }
+            None => {
+                error!("Cannot copy out of bounds: {}", address);
+                Expression::Undefined
+            }
+        }
+    }
+    fn get_list_len(&self, address: usize, offset: usize) -> Expression {
+        match self.tape.get(address) {
+            Some(Expression::List(elements)) =>
+                Expression::Number(elements.len().saturating_sub(offset) as Float),
+            Some(expr) => {
+                error!("only lists have lengths: {}", expr);
                 Expression::Undefined
             }
             None => {
