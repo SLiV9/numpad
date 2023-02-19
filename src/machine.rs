@@ -1,15 +1,15 @@
-use std::process::abort;
-
 /**/
 
 use crate::common::*;
+
+use log::*;
+use std::process::abort;
 
 pub struct Machine {
     tape: Vec<Expression>,
     call_stack: Vec<EvaluationInProgress>,
     fetched: Expression,
     instruction_address: usize,
-    verbose: bool,
 }
 
 #[derive(Debug)]
@@ -18,7 +18,7 @@ struct EvaluationInProgress {
 }
 
 impl Machine {
-    pub fn create(program: Vec<Instruction>, verbose: bool) -> Machine {
+    pub fn create(program: Vec<Instruction>) -> Machine {
         let mut tape = Vec::new();
         let min_tape_size: usize = program
             .iter()
@@ -34,12 +34,10 @@ impl Machine {
             call_stack: Vec::new(),
             fetched: Expression::default(),
             instruction_address: 0,
-            verbose,
         }
     }
 
-
-    pub fn update(&mut self,program_update: Vec<Instruction>, ) {
+    pub fn update(&mut self, program_update: Vec<Instruction>) {
         let Machine { tape, .. }: &mut Machine = self;
         let min_tape_size: usize = program_update
             .iter()
@@ -47,18 +45,15 @@ impl Machine {
             .max()
             .unwrap_or_default()
             .max(tape.len());
-        tape.resize(min_tape_size+1, Default::default());
+        tape.resize(min_tape_size + 1, Default::default());
         for instruction in program_update {
             tape[instruction.label] = instruction.expression;
         }
     }
 
     pub fn evaluate_until_finished(&mut self, address: usize) -> Expression {
-        if self.verbose {
-            println!();
-            println!();
-        }
-        self.instruction_address=0;
+        trace!("");
+        self.instruction_address = 0;
         self.fetch(address);
         while !self.is_finished() {
             self.tick();
@@ -66,9 +61,7 @@ impl Machine {
         let expression = std::mem::take(&mut self.fetched);
         match expression {
             Expression::Undefined => {
-                if self.verbose {
-                    println!("Failed to finish execution");
-                }
+                warn!("Failed to finish execution");
                 Expression::Undefined
             }
             Expression::Number(_) => expression,
@@ -89,49 +82,35 @@ impl Machine {
 
     fn fetch(&mut self, address: usize) {
         let expression = self.tape.get(address).cloned().unwrap_or_else(|| {
-            if self.verbose {
-                println!("Index out of bounds: {}", address);
-            }
+            error!("Index out of bounds: {}", address);
             Expression::Undefined
         });
         match expression {
             _ if address > 0 && address == self.instruction_address => {
-                if self.verbose {
-                    println!("Accessing call argument for {}", address);
-                }
+                info!("Accessing call argument for {}", address);
                 self.fetch(0)
             }
             Expression::Undefined => {
-                if self.verbose {
-                    println!("Access undefined register {}", address);
-                }
+                warn!("Access undefined register {}", address);
                 self.fetched = Expression::Undefined;
             }
             Expression::Number(_) => {
-                if self.verbose {
-                    println!("Access register {}: {:?}", address, expression);
-                }
+                trace!("Access register {}: {:?}", address, expression);
                 self.fetched = expression;
             }
             Expression::PointerIntoList { .. } => {
-                if self.verbose {
-                    println!("Access register {}: {:?}", address, expression);
-                }
+                trace!("Access register {}: {:?}", address, expression);
                 self.fetched = expression;
             }
             Expression::List(_) => {
-                if self.verbose {
-                    println!("Access register {}: {:?}", address, expression);
-                }
+                trace!("Access register {}: {:?}", address, expression);
                 self.fetched =
                     Expression::PointerIntoList { address, offset: 0 };
             }
             Expression::Sequence(_)
             | Expression::Unary { .. }
             | Expression::Binary { .. } => {
-                if self.verbose {
-                    println!("Evaluating {}: {:?}", address, expression);
-                }
+                trace!("Evaluating {}: {:?}", address, expression);
                 self.call_stack.push(EvaluationInProgress { expression });
                 self.fetched = Expression::Undefined;
                 self.set_called_with(Expression::Undefined);
@@ -152,36 +131,32 @@ impl Machine {
             _ if address == 0 => {
                 // Writing to address 0 is disallowed, because it is used
                 // internally to store the call arguments.
-                if self.verbose {
-                    println!("Illegal write to address 0");
-                }
+                error!("Illegal write to address 0");
                 self.fetched = Expression::Undefined;
             }
             Some(stored) => {
-                if self.verbose {
-                    println!("Writing to {}: {:?}", address, expression);
-                }
+                trace!("Writing to {}: {:?}", address, expression);
                 *stored = expression;
                 self.fetched = Expression::Undefined;
             }
             None => {
                 // TODO allow writes to arbitrary memory by expanding the tape
-                if self.verbose {
-                    println!("Unimplemened write beyond edge of tape");
-                }
+                error!("Unimplemened write beyond edge of tape");
                 self.fetched = Expression::Undefined;
             }
         }
     }
 
     fn tick(&mut self) {
-        if self.verbose {
+        {
             println!();
             for EvaluationInProgress { expression } in self.call_stack.iter() {
                 match expression {
                     Expression::Sequence(v) => {
                         println!("\tExpSeq : [");
-                        for each in v.iter() {println!("\t\t{:?}", each);}
+                        for each in v.iter() {
+                            println!("\t\t{:?}", each);
+                        }
                         println!("\t]");
                     }
                     e => println!("\t{:?}", e),
@@ -208,9 +183,7 @@ impl Machine {
                         self.solve(step);
                     }
                     None => {
-                        if self.verbose {
-                            println!("Evaluating empty sequence");
-                        }
+                        warn!("Evaluating empty sequence");
                         self.fetched = Expression::Undefined;
                     }
                 },
@@ -225,9 +198,7 @@ impl Machine {
                         self.call_stack.pop();
                         self.perform_unary_on_value(operator, expr)
                     } else {
-                        if self.verbose {
-                            println!("Evaluating operand: {:?}", expr);
-                        }
+                        trace!("Evaluating operand: {:?}", expr);
                         *operand = Box::new(Expression::Stub);
                         let sub = EvaluationInProgress { expression: expr };
                         self.call_stack.push(sub);
@@ -253,17 +224,13 @@ impl Machine {
                         self.call_stack.pop();
                         self.perform_binary_on_values(operator, left, right)
                     } else if is_value(&left) {
-                        if self.verbose {
-                            println!("Evaluating RHS: {:?}", right);
-                        }
+                        trace!("Evaluating RHS: {:?}", right);
                         *left_operand = Box::new(left);
                         *right_operand = Box::new(Expression::Stub);
                         let sub = EvaluationInProgress { expression: right };
                         self.call_stack.push(sub);
                     } else {
-                        if self.verbose {
-                            println!("Evaluating LHS: {:?}", left);
-                        }
+                        trace!("Evaluating LHS: {:?}", left);
                         *left_operand = Box::new(Expression::Stub);
                         *right_operand = Box::new(right);
                         let sub = EvaluationInProgress { expression: left };
@@ -282,17 +249,13 @@ impl Machine {
             | Expression::Number(_)
             | Expression::PointerIntoList { .. }
             | Expression::List(_) => {
-                if self.verbose {
-                    println!("Got {:?}", expression);
-                }
+                trace!("Got {:?}", expression);
                 self.fetched = expression;
             }
             Expression::Sequence(_)
             | Expression::Unary { .. }
             | Expression::Binary { .. } => {
-                if self.verbose {
-                    println!("Evaluating {:?}", expression);
-                }
+                trace!("Evaluating {:?}", expression);
                 self.call_stack.push(EvaluationInProgress { expression });
                 self.fetched = Expression::Undefined;
             }
@@ -317,9 +280,7 @@ impl Machine {
                     if let Some(element) = elements.into_iter().next() {
                         self.solve(element);
                     } else {
-                        if self.verbose {
-                            println!("Cannot fetch from empty list");
-                        }
+                        error!("Cannot fetch from empty list");
                         self.solve(Expression::Undefined);
                     }
                 }
@@ -341,9 +302,7 @@ impl Machine {
                     } else if number.is_normal() {
                         Expression::Number(number.signum())
                     } else {
-                        if self.verbose {
-                            println!("Abnormal float: {}", number);
-                        }
+                        error!("Abnormal float: {}", number);
                         Expression::Undefined
                     };
                     self.solve(expr);
@@ -446,8 +405,8 @@ impl Machine {
                 Expression::Undefined => self.solve(Expression::Undefined),
                 Expression::Number(number) => {
                     // TODO do we need to handle divide by zero?
-                    let c : u32 = number.round().abs()as u32;
-                    print!("{}", unsafe{char::from_u32_unchecked(c)});
+                    let c: u32 = number.round().abs() as u32;
+                    print!("{}", unsafe { char::from_u32_unchecked(c) });
                     self.solve(operand);
                 }
                 Expression::List(_) => {
@@ -578,8 +537,14 @@ impl Machine {
                     | Expression::Binary { .. }
                     | Expression::Stub => assert!(is_value(&right) && false),
                 },
-                Expression::List(_) => {println!("Multiplication on lists is unimplemented"); abort()},
-                Expression::PointerIntoList { .. } => {println!("Multiplication on pointers is unimplemented"); abort()}
+                Expression::List(_) => {
+                    println!("Multiplication on lists is unimplemented");
+                    abort()
+                }
+                Expression::PointerIntoList { .. } => {
+                    println!("Multiplication on pointers is unimplemented");
+                    abort()
+                }
                 Expression::Sequence(_)
                 | Expression::Unary { .. }
                 | Expression::Binary { .. }
@@ -636,7 +601,10 @@ impl Machine {
                 | Expression::Binary { .. }
                 | Expression::Stub => assert!(is_value(&left) && false),
             },
-            Binary::Abort => {println!("Aborting program"); abort()}
+            Binary::Abort => {
+                println!("Aborting program");
+                abort()
+            }
         }
     }
 
@@ -646,15 +614,11 @@ impl Machine {
                 elements.iter().skip(offset).cloned().collect(),
             ),
             Some(expr) => {
-                if self.verbose {
-                    println!("Cannot copy non-list: {:?}", expr);
-                }
+                error!("Cannot copy non-list: {:?}", expr);
                 Expression::Undefined
             }
             None => {
-                if self.verbose {
-                    println!("Cannot copy out of bounds: {}", address);
-                }
+                error!("Cannot copy out of bounds: {}", address);
                 Expression::Undefined
             }
         }
@@ -667,26 +631,20 @@ impl Machine {
                 match element {
                     Some(element) => element,
                     None => {
-                        if self.verbose {
-                            println!(
-                                "Index out of bounds: {} in {:?} at {}",
-                                offset, elements, address
-                            );
-                        }
+                        error!(
+                            "Index out of bounds: {} in {:?} at {}",
+                            offset, elements, address
+                        );
                         Expression::Undefined
                     }
                 }
             }
             Some(expr) => {
-                if self.verbose {
-                    println!("Cannot copy element from non-list: {:?}", expr);
-                }
+                error!("Cannot copy element from non-list: {:?}", expr);
                 Expression::Undefined
             }
             None => {
-                if self.verbose {
-                    println!("Cannot copy out of bounds: {}", address);
-                }
+                error!("Cannot copy out of bounds: {}", address);
                 Expression::Undefined
             }
         }
@@ -702,14 +660,10 @@ impl Machine {
                 }
             }
             Some(expr) => {
-                if self.verbose {
-                    println!("Cannot store in element of non-list: {:?}", expr);
-                }
+                error!("Cannot store in element of non-list: {:?}", expr);
             }
             None => {
-                if self.verbose {
-                    println!("Cannot store out of bounds: {}", address);
-                }
+                error!("Cannot store out of bounds: {}", address);
             }
         }
     }
@@ -722,17 +676,13 @@ impl Machine {
                 // TODO is there a better way to do a sound conversion?
                 Some(number as u32 as usize)
             } else {
-                if self.verbose {
-                    println!("Address value is too high: {}", number);
-                }
+                error!("Address value is too high: {}", number);
                 None
             }
         } else if number == 0.0 {
             Some(0)
         } else {
-            if self.verbose {
-                println!("Address value is abnormal: {}", number);
-            }
+            error!("Address value is abnormal: {}", number);
             None
         }
     }
