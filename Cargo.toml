@@ -9,3 +9,5 @@ clap = { version = "4.0", features = ["derive"] }
 anyhow = "1.0"
 thiserror = "1.0"
 itertools = "0.10"
+log = "0.4"
+stderrlog = "0.5"

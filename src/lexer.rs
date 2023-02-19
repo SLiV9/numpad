@@ -2,12 +2,10 @@
 
 use crate::common::*;
 
+use log::*;
 use logos::Logos;
 
-pub fn lex(
-    source: &str,
-    verbose: bool,
-) -> Result<Vec<LabelPass1>, anyhow::Error> {
+pub fn lex(source: &str) -> Result<Vec<LabelPass1>, anyhow::Error> {
     let mut lex: logos::Lexer<Token> = Token::lexer(source);
     let mut definition_end = false;
     let mut tree: Vec<LabelPass1> = vec![];
@@ -15,12 +13,10 @@ pub fn lex(
     let mut current_token_tree: Vec<TokenTreePass1> = vec![];
     let mut defer_nest: Vec<Vec<TokenTreePass1>> = vec![];
     while let Some(token) = lex.next() {
-        if verbose {
-            if token == Token::Error {
-                println!("\n{:?}\t| {token:?} ", lex.slice())
-            } else {
-                print!("\n{:?}\t| {token:?} ", lex.slice().trim())
-            }
+        if token == Token::Error {
+            debug!("\n{:?}\t| {token:?} ", lex.slice())
+        } else {
+            trace!("\n{:?}\t| {token:?} ", lex.slice().trim())
         }
         let mut operator = |x, y| -> Result<(), anyhow::Error> {
             if definition_end {
@@ -35,11 +31,10 @@ pub fn lex(
             Ok(())
         };
 
-    
         match token {
-            Token::Cieling=>{operator(Binary::Abort, Unary::Cieling)?},
-            Token::Floor=>{operator(Binary::Abort, Unary::Floor,)?},
-            Token::Print=>{operator(Binary::Abort, Unary::Print,)?},
+            Token::Cieling => operator(Binary::Abort, Unary::Cieling)?,
+            Token::Floor => operator(Binary::Abort, Unary::Floor)?,
+            Token::Print => operator(Binary::Abort, Unary::Print)?,
 
             Token::Star => operator(Binary::Mult, Unary::Fetch)?,
             Token::Plus => operator(Binary::Plus, Unary::Signum)?,
@@ -95,16 +90,13 @@ pub fn lex(
     }
     tree.push(LabelPass1(core::mem::take(&mut current_token_tree)));
 
-    if verbose {
-        println!();
-        println!();
-        for LabelPass1(tokens) in tree.iter() {
-            {
-                println!("Label : ")
-            };
-            for i in tokens.iter() {
-                println!("\t{i:?}")
-            }
+    trace!("");
+    for LabelPass1(tokens) in tree.iter() {
+        {
+            trace!("Label : ")
+        };
+        for i in tokens.iter() {
+            trace!("\t{i:?}")
         }
     }
     Ok(tree)

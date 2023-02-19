@@ -21,59 +21,76 @@ struct Cli {
     #[clap(short, long)]
     verbose: bool,
 
+    /// Set the level of verbosity
+    #[clap(long)]
+    log_level: Option<log::Level>,
+
+    /// Enable the REPL
     #[clap(short, long)]
-    repl: bool
+    repl: bool,
 }
 
 fn main() -> Result<(), anyhow::Error> {
     let args = Cli::parse();
-    let ref mut machine = Machine::create(
-        vec![Instruction{label:1,expression:Expression::Number(0.0)}], 
-        args.verbose
-    );
+    stderrlog::new()
+        .module("numpad")
+        .quiet(!args.verbose)
+        .verbosity(args.log_level.unwrap_or(log::Level::Trace))
+        .init()?;
+
+    let ref mut machine = Machine::create(vec![Instruction {
+        label: 1,
+        expression: Expression::Number(0.0),
+    }]);
     let filepath = &args.filepaths.get(0);
 
     let repl = args.repl | filepath.is_none();
-    
+
     if let Some(filepath) = filepath {
         let source = std::fs::read_to_string(&filepath)?;
-        let tokens = lexer::lex(&source, args.verbose)?;
-        let instructions = parser::parse(tokens, args.verbose)?;
+        let tokens = lexer::lex(&source)?;
+        let instructions = parser::parse(tokens)?;
         let output = evaluate(instructions, machine)?;
         println!("Output: {:?}", output);
     }
     //   let output = evaluate(vec![], machine)?;
     //   println!("Output: {:?}", output);
 
-
     if repl {
-        
         let ref mut read = String::new();
         let ref mut last_line = String::new();
-        'exit : loop {
+        'exit: loop {
             // read
             read.clear();
-            'read : loop {
+            'read: loop {
                 last_line.clear();
                 std::io::stdin().read_line(last_line)?;
                 last_line.push('\n');
                 match last_line.as_bytes() {
-                    [b'0'..=b'9', ..]
-                    | [b'.',b'.',..]  => {}
-                    [b'-',b'-',b'-',b'-',..] => break 'exit ,
-                    [b'\n', ..]      => {break 'read}
-                    _ => {println!("Invalid starting character"); continue}
+                    [b'0'..=b'9', ..] | [b'.', b'.', ..] => {}
+                    [b'-', b'-', b'-', b'-', ..] => break 'exit,
+                    [b'\n', ..] => break 'read,
+                    _ => {
+                        println!("Invalid starting character");
+                        continue;
+                    }
                 }
                 read.push_str(last_line)
             }
             // evaluate
-            let tokens = match lexer::lex(&read, args.verbose) {
-              Ok(t) => t,
-              Err(e) => {println!("Bad Input\nError :: {e}"); continue}
+            let tokens = match lexer::lex(&read) {
+                Ok(t) => t,
+                Err(e) => {
+                    println!("Bad Input\nError :: {e}");
+                    continue;
+                }
             };
-            let instructions = match parser::parse(tokens, args.verbose) {
-              Ok(t) => t,
-              Err(e) => {println!("Bad Input\nError :: {e}"); continue}
+            let instructions = match parser::parse(tokens) {
+                Ok(t) => t,
+                Err(e) => {
+                    println!("Bad Input\nError :: {e}");
+                    continue;
+                }
             };
             // print
             let output = evaluate(instructions, machine)?;
@@ -82,13 +99,12 @@ fn main() -> Result<(), anyhow::Error> {
         }
     }
 
-
     Ok(())
 }
 
 fn evaluate(
     program: Vec<Instruction>,
-    machine: &mut Machine
+    machine: &mut Machine,
 ) -> Result<Expression, anyhow::Error> {
     machine.update(program);
     let answer = machine.evaluate_until_finished(1);
