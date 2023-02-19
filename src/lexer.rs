@@ -1,4 +1,8 @@
-/**/
+//
+// Part of Numpad
+// Copyright (c) 2023 Remy Pierre Bushnell Clarke & Sander in 't Veld
+// License: MIT
+//
 
 use crate::common::*;
 
@@ -32,7 +36,7 @@ pub fn lex(source: &str) -> Result<Vec<LabelPass1>, anyhow::Error> {
         };
 
         match token {
-            Token::Cieling => operator(Binary::Abort, Unary::Cieling)?,
+            Token::Ceiling => operator(Binary::Abort, Unary::Ceiling)?,
             Token::Floor => operator(Binary::Abort, Unary::Floor)?,
             Token::Print => operator(Binary::Abort, Unary::Print)?,
 
@@ -115,7 +119,7 @@ enum Token {
     Slash,
 
     #[regex(r"\+[ \t]*\.[ \t]*")]
-    Cieling,
+    Ceiling,
     #[regex(r"\-[ \t]*\.[ \t]*")]
     Floor,
     #[regex(r"\*[ \t]*\.[ \t]*")]

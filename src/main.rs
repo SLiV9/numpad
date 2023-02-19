@@ -1,4 +1,8 @@
-/**/
+//
+// Part of Numpad
+// Copyright (c) 2023 Remy Pierre Bushnell Clarke & Sander in 't Veld
+// License: MIT
+//
 
 mod common;
 mod lexer;

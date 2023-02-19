@@ -1,4 +1,8 @@
-/**/
+//
+// Part of Numpad
+// Copyright (c) 2023 Remy Pierre Bushnell Clarke & Sander in 't Veld
+// License: MIT
+//
 
 use crate::common::*;
 
@@ -345,7 +349,7 @@ impl Machine {
                     self.solve(Expression::Undefined);
                 }
             },
-            Unary::Cieling => match operand {
+            Unary::Ceiling => match operand {
                 Expression::Undefined => self.solve(Expression::Undefined),
                 Expression::Number(number) => {
                     let expr = Expression::Number(number.ceil());

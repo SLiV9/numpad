@@ -1,4 +1,8 @@
-/**/
+//
+// Part of Numpad
+// Copyright (c) 2023 Remy Pierre Bushnell Clarke & Sander in 't Veld
+// License: MIT
+//
 
 pub type Integral = usize;
 
@@ -11,7 +15,7 @@ pub enum Unary {
     Neg,
     Recip,
 
-    Cieling,
+    Ceiling,
     Floor,
     Print,
 }

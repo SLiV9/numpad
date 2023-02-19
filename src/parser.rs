@@ -1,4 +1,8 @@
-/**/
+//
+// Part of Numpad
+// Copyright (c) 2023 Remy Pierre Bushnell Clarke & Sander in 't Veld
+// License: MIT
+//
 
 use crate::common::*;
 use crate::lexer::LabelPass1;
