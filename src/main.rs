@@ -9,6 +9,7 @@ use crate::common::*;
 use crate::machine::Machine;
 
 use clap::Parser;
+use rustyline::{DefaultEditor, error::ReadlineError};
 
 #[derive(Debug, clap::Parser)]
 #[clap(version, propagate_version = true)]
@@ -27,6 +28,11 @@ struct Cli {
 
 fn main() -> Result<(), anyhow::Error> {
     let args = Cli::parse();
+    let mut rl = DefaultEditor::new()?;
+    if rl.load_history("history.txt").is_err() {
+        println!("No previous history.");
+    }
+
     let ref mut machine = Machine::create(
         vec![Instruction{label:1,expression:Expression::Number(0.0)}], 
         args.verbose
@@ -42,29 +48,27 @@ fn main() -> Result<(), anyhow::Error> {
         let output = evaluate(instructions, machine)?;
         println!("Output: {:?}", output);
     }
-    //   let output = evaluate(vec![], machine)?;
-    //   println!("Output: {:?}", output);
-
 
     if repl {
         
         let ref mut read = String::new();
-        let ref mut last_line = String::new();
+        // let ref mut last_line = String::new();
         'exit : loop {
             // read
             read.clear();
             'read : loop {
-                last_line.clear();
-                std::io::stdin().read_line(last_line)?;
-                last_line.push('\n');
-                match last_line.as_bytes() {
+                let mut readline = rl.readline("| ")?;
+                rl.add_history_entry(readline.as_str())?;
+
+                readline.push('\n');
+                match readline.as_bytes() {
                     [b'0'..=b'9', ..]
                     | [b'.',b'.',..]  => {}
                     [b'-',b'-',b'-',b'-',..] => break 'exit ,
                     [b'\n', ..]      => {break 'read}
                     _ => {println!("Invalid starting character"); continue}
                 }
-                read.push_str(last_line)
+                read.push_str(&readline)
             }
             // evaluate
             let tokens = match lexer::lex(&read, args.verbose) {
@@ -82,7 +86,7 @@ fn main() -> Result<(), anyhow::Error> {
         }
     }
 
-
+    rl.save_history("history.txt")?;
     Ok(())
 }
 

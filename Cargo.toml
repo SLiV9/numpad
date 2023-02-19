@@ -9,3 +9,4 @@ clap = { version = "4.0", features = ["derive"] }
 anyhow = "1.0"
 thiserror = "1.0"
 itertools = "0.10"
+rustyline = "11.0.0"

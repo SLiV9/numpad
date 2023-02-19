@@ -74,13 +74,18 @@ Start a repl
 ```
 (running numpad with no arguments starts the repl)
 numpad
-(We reccomend you install rlwrap to have input history)
-rlwrap numpad
 
-```
+(The first time you run numpad, it will create a history file)
 
-End Repl session
-```
-(type 4 minus characters)
+(to run the repl after passing in a source file, use the --repl flag)
+numpad hello.num --repl
+
+(to get large amounts of debug information us the --verbose flag)
+numpad --verbose
+
+(--verbose and --repl do work together)
+numpad hello.num --repl --verbose
+
+(End repl session by typing 4 minus characters)
 ----
 ````

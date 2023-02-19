@@ -177,8 +177,16 @@ impl Machine {
     fn tick(&mut self) {
         if self.verbose {
             println!();
-            println!("{:#?}", self.call_stack);
-            println!();
+            for EvaluationInProgress { expression } in self.call_stack.iter() {
+                match expression {
+                    Expression::Sequence(v) => {
+                        println!("\tExpSeq : [");
+                        for each in v.iter() {println!("\t\t{:?}", each);}
+                        println!("\t]");
+                    }
+                    e => println!("\t{:?}", e),
+                };
+            }
         }
         match self.call_stack.last_mut() {
             Some(evaluation) => match &mut evaluation.expression {
