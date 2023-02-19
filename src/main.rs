@@ -43,9 +43,6 @@ fn main() -> Result<(), anyhow::Error> {
         .verbosity(args.log_level.unwrap_or(log::Level::Trace))
         .init()?;
     let mut rl = DefaultEditor::new()?;
-    if rl.load_history("history.txt").is_err() {
-        println!("No previous history.");
-    }
 
     let ref mut machine = Machine::create(vec![Instruction {
         label: 1,
@@ -64,6 +61,10 @@ fn main() -> Result<(), anyhow::Error> {
     }
 
     if repl {
+        if rl.load_history("history.txt").is_err() {
+            println!("No previous history.");
+        }
+
         let ref mut read = String::new();
         'exit: loop {
             // read
@@ -104,9 +105,9 @@ fn main() -> Result<(), anyhow::Error> {
             println!("Output: {}", output);
             // loop
         }
-    }
 
-    rl.save_history("history.txt")?;
+        rl.save_history("history.txt")?;
+    }
     Ok(())
 }
 
