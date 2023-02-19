@@ -14,9 +14,9 @@ pub fn lex(source: &str) -> Result<Vec<LabelPass1>, anyhow::Error> {
     let mut defer_nest: Vec<Vec<TokenTreePass1>> = vec![];
     while let Some(token) = lex.next() {
         if token == Token::Error {
-            debug!("\n{:?}\t| {token:?} ", lex.slice())
+            debug!("{:?}\t| {token:?} ", lex.slice())
         } else {
-            trace!("\n{:?}\t| {token:?} ", lex.slice().trim())
+            trace!("{:?}\t| {token:?} ", lex.slice().trim())
         }
         let mut operator = |x, y| -> Result<(), anyhow::Error> {
             if definition_end {

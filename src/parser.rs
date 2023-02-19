@@ -46,7 +46,7 @@ fn parse_instruction(
             .pop()
             .ok_or_else(|| Error::ExpectedExpression)?
     };
-    trace!("{}:\t{:?}", label, expression);
+    trace!("{}:\t{}", label, expression);
     let instruction = Instruction { label, expression };
     Ok(instruction)
 }

@@ -26,6 +26,10 @@ struct Cli {
     #[clap(long)]
     log_level: Option<log::Level>,
 
+    /// Set the module from which to show logs
+    #[clap(long)]
+    log_module: Option<String>,
+
     /// Enable the REPL
     #[clap(short, long)]
     repl: bool,
@@ -34,7 +38,7 @@ struct Cli {
 fn main() -> Result<(), anyhow::Error> {
     let args = Cli::parse();
     stderrlog::new()
-        .module("numpad")
+        .module(args.log_module.unwrap_or("numpad".to_string()))
         .quiet(!args.verbose)
         .verbosity(args.log_level.unwrap_or(log::Level::Trace))
         .init()?;
