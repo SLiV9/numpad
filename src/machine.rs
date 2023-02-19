@@ -140,8 +140,10 @@ impl Machine {
                 self.fetched = Expression::Undefined;
             }
             None => {
-                // TODO allow writes to arbitrary memory by expanding the tape
-                error!("Unimplemened write beyond edge of tape");
+                let size = address + 1;
+                info!("Extending tape to size {size}");
+                self.tape.resize_with(size, || Expression::default());
+                self.tape[address] = expression;
                 self.fetched = Expression::Undefined;
             }
         }
@@ -570,7 +572,6 @@ impl Machine {
             if number < 0.5 {
                 Some(0)
             } else if number < u32::MAX as f64 {
-                // TODO is there a better way to do a sound conversion?
                 Some(number as u32 as usize)
             } else {
                 error!("Address value is too high: {}", number);
