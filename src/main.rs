@@ -9,7 +9,7 @@ use crate::common::*;
 use crate::machine::Machine;
 
 use clap::Parser;
-use rustyline::{error::ReadlineError, DefaultEditor};
+use rustyline::DefaultEditor;
 
 #[derive(Debug, clap::Parser)]
 #[clap(version, propagate_version = true)]

@@ -95,22 +95,22 @@ impl Machine {
                 self.fetched = Expression::Undefined;
             }
             Expression::Number(_) => {
-                trace!("Access register {}: {:?}", address, expression);
+                trace!("Access register {}: {}", address, expression);
                 self.fetched = expression;
             }
             Expression::PointerIntoList { .. } => {
-                trace!("Access register {}: {:?}", address, expression);
+                trace!("Access register {}: {}", address, expression);
                 self.fetched = expression;
             }
             Expression::List(_) => {
-                trace!("Access register {}: {:?}", address, expression);
+                trace!("Access register {}: {}", address, expression);
                 self.fetched =
                     Expression::PointerIntoList { address, offset: 0 };
             }
             Expression::Sequence(_)
             | Expression::Unary { .. }
             | Expression::Binary { .. } => {
-                trace!("Evaluating {}: {:?}", address, expression);
+                trace!("Evaluating {}: {}", address, expression);
                 self.call_stack.push(EvaluationInProgress { expression });
                 self.fetched = Expression::Undefined;
                 self.set_called_with(Expression::Undefined);
@@ -135,7 +135,7 @@ impl Machine {
                 self.fetched = Expression::Undefined;
             }
             Some(stored) => {
-                trace!("Writing to {}: {:?}", address, expression);
+                trace!("Writing to {}: {}", address, expression);
                 *stored = expression;
                 self.fetched = Expression::Undefined;
             }
@@ -148,20 +148,9 @@ impl Machine {
     }
 
     fn tick(&mut self) {
-        {
-            println!();
-            for EvaluationInProgress { expression } in self.call_stack.iter() {
-                match expression {
-                    Expression::Sequence(v) => {
-                        println!("\tExpSeq : [");
-                        for each in v.iter() {
-                            println!("\t\t{:?}", each);
-                        }
-                        println!("\t]");
-                    }
-                    e => println!("\t{:?}", e),
-                };
-            }
+        trace!("");
+        for EvaluationInProgress { expression } in self.call_stack.iter() {
+            trace!("Eval :: {}", expression);
         }
         match self.call_stack.last_mut() {
             Some(evaluation) => match &mut evaluation.expression {
@@ -198,7 +187,7 @@ impl Machine {
                         self.call_stack.pop();
                         self.perform_unary_on_value(operator, expr)
                     } else {
-                        trace!("Evaluating operand: {:?}", expr);
+                        trace!("Evaluating operand: {}", expr);
                         *operand = Box::new(Expression::Stub);
                         let sub = EvaluationInProgress { expression: expr };
                         self.call_stack.push(sub);
@@ -224,13 +213,13 @@ impl Machine {
                         self.call_stack.pop();
                         self.perform_binary_on_values(operator, left, right)
                     } else if is_value(&left) {
-                        trace!("Evaluating RHS: {:?}", right);
+                        trace!("Evaluating RHS: {}", right);
                         *left_operand = Box::new(left);
                         *right_operand = Box::new(Expression::Stub);
                         let sub = EvaluationInProgress { expression: right };
                         self.call_stack.push(sub);
                     } else {
-                        trace!("Evaluating LHS: {:?}", left);
+                        trace!("Evaluating LHS: {}", left);
                         *left_operand = Box::new(Expression::Stub);
                         *right_operand = Box::new(right);
                         let sub = EvaluationInProgress { expression: left };
@@ -249,13 +238,13 @@ impl Machine {
             | Expression::Number(_)
             | Expression::PointerIntoList { .. }
             | Expression::List(_) => {
-                trace!("Got {:?}", expression);
+                trace!("Got {}", expression);
                 self.fetched = expression;
             }
             Expression::Sequence(_)
             | Expression::Unary { .. }
             | Expression::Binary { .. } => {
-                trace!("Evaluating {:?}", expression);
+                trace!("Evaluating {}", expression);
                 self.call_stack.push(EvaluationInProgress { expression });
                 self.fetched = Expression::Undefined;
             }
@@ -614,7 +603,7 @@ impl Machine {
                 elements.iter().skip(offset).cloned().collect(),
             ),
             Some(expr) => {
-                error!("Cannot copy non-list: {:?}", expr);
+                error!("Cannot copy non-list: {}", expr);
                 Expression::Undefined
             }
             None => {
@@ -632,15 +621,17 @@ impl Machine {
                     Some(element) => element,
                     None => {
                         error!(
-                            "Index out of bounds: {} in {:?} at {}",
-                            offset, elements, address
+                            "Index out of bounds: {} in {} at {}",
+                            offset,
+                            Expression::List(elements.to_vec()),
+                            address
                         );
                         Expression::Undefined
                     }
                 }
             }
             Some(expr) => {
-                error!("Cannot copy element from non-list: {:?}", expr);
+                error!("Cannot copy element from non-list: {}", expr);
                 Expression::Undefined
             }
             None => {
@@ -660,7 +651,7 @@ impl Machine {
                 }
             }
             Some(expr) => {
-                error!("Cannot store in element of non-list: {:?}", expr);
+                error!("Cannot store in element of non-list: {}", expr);
             }
             None => {
                 error!("Cannot store out of bounds: {}", address);
