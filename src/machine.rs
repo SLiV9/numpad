@@ -87,7 +87,7 @@ impl Machine {
         });
         match expression {
             _ if address > 0 && address == self.instruction_address => {
-                info!("Accessing call argument for {}", address);
+                trace!("Accessing call argument for {}", address);
                 self.fetch(0)
             }
             Expression::Undefined => {
@@ -122,6 +122,10 @@ impl Machine {
 
     fn set_called_with(&mut self, expression: Expression) {
         if let Some(stored) = self.tape.get_mut(0) {
+            match &expression {
+                Expression::Undefined => trace!("Clearing call arguments"),
+                _ => trace!("Setting call argument to {}", expression),
+            }
             *stored = expression;
         }
     }
@@ -519,6 +523,8 @@ impl Machine {
             Binary::CallWith => match left {
                 Expression::Undefined => self.solve(Expression::Undefined),
                 Expression::Number(number) => {
+                    self.set_called_with(Expression::Undefined);
+                    self.instruction_address = 0;
                     // Evaluate the expression at the given address...
                     if let Some(address) = self.address_from_number(number) {
                         self.fetch(address);
