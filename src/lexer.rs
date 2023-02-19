@@ -117,15 +117,15 @@ enum Token {
     Slash,
 
     // Structurals
-    #[regex(r"/\.[ \t]*")]
+    #[regex(r"/[ \t]*\.[ \t]*")]
     OpenExpr,
-    #[regex(r"\./[ \t]*")]
+    #[regex(r"\.[ \t]*/[ \t]*")]
     CloseExpr,
-    #[regex(r"\.\.[ \t]*")]
+    #[regex(r"\.[ \t]*\.[ \t]*")]
     Separator,
 
     // Literals
-    #[regex(r"[0-9][0-9 \t]*(\.[0-9 \t]+)?")]
+    #[regex(r"[0-9][0-9 \t]*(\.[0-9][0-9 \t]*)?")]
     Number,
 
     // Display
