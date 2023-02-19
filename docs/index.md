@@ -65,16 +65,22 @@ Uhm, ok, maybe not *that* easy. But sure enough, this outputs:
 Output: list [(1), (11), (16), (20), (40), ]
 ```
 
-## Syntax
+Still not convinced?
 
-### Comments in source code
+[Watch Sander code a program live using only the numpad.](http://www.youtube.com/watch?v=0ftXhx-7Ffs "Numpad demo: printing A-Z")
+
+[![Demo on YouTube](http://img.youtube.com/vi/0ftXhx-7Ffs/0.jpg)](http://www.youtube.com/watch?v=0ftXhx-7Ffs "Numpad demo: printing A-Z")
+
+## Syntax
 
 Although not part of the language proper because they cannot be typed on a numpad, comments can be useful to clarify things.
 
 ```
-(Comments use paired parenthesis, and should only be used in source code.)
-(Both parentheses must be on the same line.)
+(Comments use paired parenthesis on the same line.)
+(The should only be used to annotate source code.)
 ```
+
+We will use them below to explain the syntax.
 
 ### Literals
 
@@ -306,8 +312,8 @@ Statements spread out over multiple lines are evaluated top to bottom.
 Lazy evaluation allows you to do conditional computation:
 
 ```
-| 1 .. */.*2..*3./ + 1   (the list contains two unevaluated expressions)
-|                        (2 is undefined, but never fetched so that's ok)
+| 1 .. */.*2..*3./ + 1   (the list contains two expressions)
+|                        (2 is undefined, but never fetched)
 | 3 .. 100
 |
 Output: (100)
@@ -321,7 +327,7 @@ By combining this trick with the carefully placement of values at certain addres
 .. *3                  (continue by evaluating 3, the main loop)
 3
 .. 4 - 26 +- *2        (calculate 26 - i and store it in "x")
-.. */.*9..*5./ + +*4   (evaluate either 9 or 5, depending on the signum of x)
+.. */.*9..*5./ + +*4   (evaluate either 9 or 5, depending on x)
 5
 .. *. 65 + *2          (print an ascii character from 'A' to 'Z')
 .. 2 - 1+*2            (i = i + 1)
@@ -342,7 +348,7 @@ In fact, you could use this convention to supply "arguments" to an algorithm.
 .. 32 - 5
 .. *30
 
-30 .. /.*31./ + *32      (this algorithm calculates the sum of its arguments)
+30 .. /.*31./ + *32      (this algorithm calculates a sum)
 ```
 
 ### Functions
