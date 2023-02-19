@@ -1,0 +1,13 @@
+1
+.. 2 - 0               (set a "variable", let's call it "i", to 0)
+.. *3                  (continue by evaluating 3, the main loop)
+3
+.. 4 - 26 +- *2        (calculate 26 - i and store it in "x")
+.. */.*9..*5./ + +*4   (evaluate either 9 or 5, depending on the signum of x)
+5
+.. *. 65 + *2          (print an ascii character from 'A' to 'Z')
+.. 2 - 1+*2            (i = i + 1)
+.. *3                  (loop back to 3)
+9
+.. *. 10               (print a newline)
+.. /../                (we are done, return an empty list)
