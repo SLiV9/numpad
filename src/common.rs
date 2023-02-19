@@ -10,6 +10,10 @@ pub enum Unary {
     Signum,
     Neg,
     Recip,
+
+    Cieling,
+    Floor,
+    Print,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -18,6 +22,8 @@ pub enum Binary {
     Mult,
     Assign,
     CallWith,
+
+    Abort,
 }
 
 #[derive(Debug, Clone)]
