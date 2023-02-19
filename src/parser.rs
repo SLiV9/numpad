@@ -86,9 +86,7 @@ fn parse_expression(
                             .split_mut(is_separator)
                             .filter(|tokens| !tokens.is_empty())
                             .map(|tokens| {
-                                // TODO avoid unnecessary clone here
-                                let tokens: Vec<TokenTreePass1> =
-                                    tokens.to_vec();
+                                let tokens = tokens.to_vec();
                                 parse_expression(tokens.into_iter())
                             })
                             .collect();
