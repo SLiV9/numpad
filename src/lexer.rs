@@ -34,7 +34,13 @@ pub fn lex(
             prev_num = false;
             Ok(())
         };
+
+    
         match token {
+            Token::Cieling=>{operator(Binary::Abort, Unary::Cieling)?},
+            Token::Floor=>{operator(Binary::Abort, Unary::Floor,)?},
+            Token::Print=>{operator(Binary::Abort, Unary::Print,)?},
+
             Token::Star => operator(Binary::Mult, Unary::Fetch)?,
             Token::Plus => operator(Binary::Plus, Unary::Signum)?,
             Token::Minus => operator(Binary::Assign, Unary::Neg)?,
@@ -115,6 +121,13 @@ enum Token {
     Minus,
     #[regex(r"/[ \t]*")]
     Slash,
+
+    #[regex(r"\+[ \t]*\.[ \t]*")]
+    Cieling,
+    #[regex(r"\-[ \t]*\.[ \t]*")]
+    Floor,
+    #[regex(r"\*[ \t]*\.[ \t]*")]
+    Print,
 
     // Structurals
     #[regex(r"/[ \t]*\.[ \t]*")]

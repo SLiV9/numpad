@@ -1,3 +1,5 @@
+use std::process::abort;
+
 /**/
 
 use crate::common::*;
@@ -36,11 +38,27 @@ impl Machine {
         }
     }
 
+
+    pub fn update(&mut self,program_update: Vec<Instruction>, ) {
+        let Machine { tape, .. }: &mut Machine = self;
+        let min_tape_size: usize = program_update
+            .iter()
+            .map(|instruction| instruction.label)
+            .max()
+            .unwrap_or_default()
+            .max(tape.len());
+        tape.resize(min_tape_size+1, Default::default());
+        for instruction in program_update {
+            tape[instruction.label] = instruction.expression;
+        }
+    }
+
     pub fn evaluate_until_finished(&mut self, address: usize) -> Expression {
         if self.verbose {
             println!();
             println!();
         }
+        self.instruction_address=0;
         self.fetch(address);
         while !self.is_finished() {
             self.tick();
@@ -376,6 +394,67 @@ impl Machine {
                 | Expression::Binary { .. }
                 | Expression::Stub => assert!(is_value(&operand) && false),
             },
+            Unary::Cieling => match operand {
+                Expression::Undefined => self.solve(Expression::Undefined),
+                Expression::Number(number) => {
+                    // TODO do we need to handle divide by zero?
+                    let expr = Expression::Number(number.ceil());
+                    self.solve(expr);
+                }
+                Expression::List(_) => {
+                    // TODO ???
+                    unimplemented!()
+                }
+                Expression::PointerIntoList { .. } => {
+                    // This has to match the behavior above.
+                    unimplemented!()
+                }
+                Expression::Sequence(_)
+                | Expression::Unary { .. }
+                | Expression::Binary { .. }
+                | Expression::Stub => assert!(is_value(&operand) && false),
+            },
+            Unary::Floor => match operand {
+                Expression::Undefined => self.solve(Expression::Undefined),
+                Expression::Number(number) => {
+                    // TODO do we need to handle divide by zero?
+                    let expr = Expression::Number(number.floor());
+                    self.solve(expr);
+                }
+                Expression::List(_) => {
+                    // TODO ???
+                    unimplemented!()
+                }
+                Expression::PointerIntoList { .. } => {
+                    // This has to match the behavior above.
+                    unimplemented!()
+                }
+                Expression::Sequence(_)
+                | Expression::Unary { .. }
+                | Expression::Binary { .. }
+                | Expression::Stub => assert!(is_value(&operand) && false),
+            },
+            Unary::Print => match operand {
+                Expression::Undefined => self.solve(Expression::Undefined),
+                Expression::Number(number) => {
+                    // TODO do we need to handle divide by zero?
+                    let c : u32 = number.round().abs()as u32;
+                    print!("{}", unsafe{char::from_u32_unchecked(c)});
+                    self.solve(operand);
+                }
+                Expression::List(_) => {
+                    // TODO ???
+                    unimplemented!()
+                }
+                Expression::PointerIntoList { .. } => {
+                    // This has to match the behavior above.
+                    unimplemented!()
+                }
+                Expression::Sequence(_)
+                | Expression::Unary { .. }
+                | Expression::Binary { .. }
+                | Expression::Stub => assert!(is_value(&operand) && false),
+            },
         }
     }
 
@@ -471,10 +550,33 @@ impl Machine {
                 | Expression::Binary { .. }
                 | Expression::Stub => assert!(is_value(&left) && false),
             },
-            Binary::Mult => {
-                // TODO
-                unimplemented!()
-            }
+            Binary::Mult => match left {
+                Expression::Undefined => self.solve(Expression::Undefined),
+                Expression::Number(a) => match right {
+                    Expression::Undefined => self.solve(Expression::Undefined),
+                    Expression::Number(b) => {
+                        self.solve(Expression::Number(a * b));
+                    }
+                    Expression::List(_) => {
+                        // TODO ???
+                        unimplemented!()
+                    }
+                    Expression::PointerIntoList { .. } => {
+                        // This has to match the behavior above.
+                        unimplemented!()
+                    }
+                    Expression::Sequence(_)
+                    | Expression::Unary { .. }
+                    | Expression::Binary { .. }
+                    | Expression::Stub => assert!(is_value(&right) && false),
+                },
+                Expression::List(_) => {println!("Multiplication on lists is unimplemented"); abort()},
+                Expression::PointerIntoList { .. } => {println!("Multiplication on pointers is unimplemented"); abort()}
+                Expression::Sequence(_)
+                | Expression::Unary { .. }
+                | Expression::Binary { .. }
+                | Expression::Stub => assert!(is_value(&left) && false),
+            },
             Binary::Assign => match left {
                 Expression::Undefined => self.solve(Expression::Undefined),
                 Expression::Number(number) => {
@@ -526,6 +628,7 @@ impl Machine {
                 | Expression::Binary { .. }
                 | Expression::Stub => assert!(is_value(&left) && false),
             },
+            Binary::Abort => {println!("Aborting program"); abort()}
         }
     }
 
