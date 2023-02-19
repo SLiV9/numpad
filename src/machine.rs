@@ -278,10 +278,10 @@ impl Machine {
                     let element = self.copy_element(address, offset);
                     self.solve(element);
                 }
-                Expression::Sequence(_)
-                | Expression::Unary { .. }
-                | Expression::Binary { .. }
-                | Expression::Stub => assert!(is_value(&operand) && false),
+                expr => {
+                    warn!("Unimplemented for {}", expr);
+                    self.solve(Expression::Undefined);
+                }
             },
             Unary::Signum => match operand {
                 Expression::Undefined => self.solve(Expression::Undefined),
@@ -306,10 +306,10 @@ impl Machine {
                     let list = self.copy_list(address, offset);
                     self.solve(list);
                 }
-                Expression::Sequence(_)
-                | Expression::Unary { .. }
-                | Expression::Binary { .. }
-                | Expression::Stub => assert!(is_value(&operand) && false),
+                expr => {
+                    warn!("Unimplemented for {}", expr);
+                    self.solve(Expression::Undefined);
+                }
             },
             Unary::Neg => match operand {
                 Expression::Undefined => self.solve(Expression::Undefined),
@@ -317,99 +317,55 @@ impl Machine {
                     let expr = Expression::Number(-number);
                     self.solve(expr);
                 }
-                Expression::List(_) => {
-                    // TODO maybe list reversal?
-                    unimplemented!()
+                expr => {
+                    warn!("Unimplemented for {}", expr);
+                    self.solve(Expression::Undefined);
                 }
-                Expression::PointerIntoList { .. } => {
-                    // This has to match the behavior above.
-                    unimplemented!()
-                }
-                Expression::Sequence(_)
-                | Expression::Unary { .. }
-                | Expression::Binary { .. }
-                | Expression::Stub => assert!(is_value(&operand) && false),
             },
             Unary::Recip => match operand {
                 Expression::Undefined => self.solve(Expression::Undefined),
                 Expression::Number(number) => {
-                    // TODO do we need to handle divide by zero?
                     let expr = Expression::Number(1.0 / number);
                     self.solve(expr);
                 }
-                Expression::List(_) => {
-                    // TODO ???
-                    unimplemented!()
+                expr => {
+                    warn!("Unimplemented for {}", expr);
+                    self.solve(Expression::Undefined);
                 }
-                Expression::PointerIntoList { .. } => {
-                    // This has to match the behavior above.
-                    unimplemented!()
-                }
-                Expression::Sequence(_)
-                | Expression::Unary { .. }
-                | Expression::Binary { .. }
-                | Expression::Stub => assert!(is_value(&operand) && false),
             },
             Unary::Cieling => match operand {
                 Expression::Undefined => self.solve(Expression::Undefined),
                 Expression::Number(number) => {
-                    // TODO do we need to handle divide by zero?
                     let expr = Expression::Number(number.ceil());
                     self.solve(expr);
                 }
-                Expression::List(_) => {
-                    // TODO ???
-                    unimplemented!()
+                expr => {
+                    warn!("Unimplemented for {}", expr);
+                    self.solve(Expression::Undefined);
                 }
-                Expression::PointerIntoList { .. } => {
-                    // This has to match the behavior above.
-                    unimplemented!()
-                }
-                Expression::Sequence(_)
-                | Expression::Unary { .. }
-                | Expression::Binary { .. }
-                | Expression::Stub => assert!(is_value(&operand) && false),
             },
             Unary::Floor => match operand {
                 Expression::Undefined => self.solve(Expression::Undefined),
                 Expression::Number(number) => {
-                    // TODO do we need to handle divide by zero?
                     let expr = Expression::Number(number.floor());
                     self.solve(expr);
                 }
-                Expression::List(_) => {
-                    // TODO ???
-                    unimplemented!()
+                expr => {
+                    warn!("Unimplemented for {}", expr);
+                    self.solve(Expression::Undefined);
                 }
-                Expression::PointerIntoList { .. } => {
-                    // This has to match the behavior above.
-                    unimplemented!()
-                }
-                Expression::Sequence(_)
-                | Expression::Unary { .. }
-                | Expression::Binary { .. }
-                | Expression::Stub => assert!(is_value(&operand) && false),
             },
             Unary::Print => match operand {
                 Expression::Undefined => self.solve(Expression::Undefined),
                 Expression::Number(number) => {
-                    // TODO do we need to handle divide by zero?
                     let c: u32 = number.round().abs() as u32;
                     print!("{}", unsafe { char::from_u32_unchecked(c) });
                     self.solve(operand);
                 }
-                Expression::List(_) => {
-                    // TODO ???
-                    unimplemented!()
+                expr => {
+                    warn!("Unimplemented for {}", expr);
+                    self.solve(Expression::Undefined);
                 }
-                Expression::PointerIntoList { .. } => {
-                    // This has to match the behavior above.
-                    unimplemented!()
-                }
-                Expression::Sequence(_)
-                | Expression::Unary { .. }
-                | Expression::Binary { .. }
-                | Expression::Stub => assert!(is_value(&operand) && false),
             },
         }
     }
@@ -428,18 +384,10 @@ impl Machine {
                     Expression::Number(b) => {
                         self.solve(Expression::Number(a + b));
                     }
-                    Expression::List(_) => {
-                        // TODO ???
-                        unimplemented!()
+                    expr => {
+                        warn!("Unimplemented for {}", expr);
+                        self.solve(Expression::Undefined);
                     }
-                    Expression::PointerIntoList { .. } => {
-                        // This has to match the behavior above.
-                        unimplemented!()
-                    }
-                    Expression::Sequence(_)
-                    | Expression::Unary { .. }
-                    | Expression::Binary { .. }
-                    | Expression::Stub => assert!(is_value(&right) && false),
                 },
                 Expression::List(mut elements) => match right {
                     Expression::Undefined => self.solve(Expression::Undefined),
@@ -453,18 +401,10 @@ impl Machine {
                             self.solve(Expression::Undefined);
                         }
                     }
-                    Expression::List(_) => {
-                        // TODO ???
-                        unimplemented!()
+                    expr => {
+                        warn!("Unimplemented for {}", expr);
+                        self.solve(Expression::Undefined);
                     }
-                    Expression::PointerIntoList { .. } => {
-                        // This has to match the behavior above.
-                        unimplemented!()
-                    }
-                    Expression::Sequence(_)
-                    | Expression::Unary { .. }
-                    | Expression::Binary { .. }
-                    | Expression::Stub => assert!(is_value(&right) && false),
                 },
                 Expression::PointerIntoList { address, offset } => {
                     match right {
@@ -485,26 +425,16 @@ impl Machine {
                                 self.solve(Expression::Undefined);
                             }
                         }
-                        Expression::List(_) => {
-                            // TODO ???
-                            unimplemented!()
-                        }
-                        Expression::PointerIntoList { .. } => {
-                            // This has to match the behavior above.
-                            unimplemented!()
-                        }
-                        Expression::Sequence(_)
-                        | Expression::Unary { .. }
-                        | Expression::Binary { .. }
-                        | Expression::Stub => {
-                            assert!(is_value(&right) && false)
+                        expr => {
+                            warn!("Unimplemented for {}", expr);
+                            self.solve(Expression::Undefined);
                         }
                     }
                 }
-                Expression::Sequence(_)
-                | Expression::Unary { .. }
-                | Expression::Binary { .. }
-                | Expression::Stub => assert!(is_value(&left) && false),
+                expr => {
+                    warn!("Unimplemented for {}", expr);
+                    self.solve(Expression::Undefined);
+                }
             },
             Binary::Mult => match left {
                 Expression::Undefined => self.solve(Expression::Undefined),
@@ -513,31 +443,15 @@ impl Machine {
                     Expression::Number(b) => {
                         self.solve(Expression::Number(a * b));
                     }
-                    Expression::List(_) => {
-                        // TODO ???
-                        unimplemented!()
+                    expr => {
+                        warn!("Unimplemented for {}", expr);
+                        self.solve(Expression::Undefined);
                     }
-                    Expression::PointerIntoList { .. } => {
-                        // This has to match the behavior above.
-                        unimplemented!()
-                    }
-                    Expression::Sequence(_)
-                    | Expression::Unary { .. }
-                    | Expression::Binary { .. }
-                    | Expression::Stub => assert!(is_value(&right) && false),
                 },
-                Expression::List(_) => {
-                    println!("Multiplication on lists is unimplemented");
-                    abort()
+                expr => {
+                    warn!("Unimplemented for {}", expr);
+                    self.solve(Expression::Undefined);
                 }
-                Expression::PointerIntoList { .. } => {
-                    println!("Multiplication on pointers is unimplemented");
-                    abort()
-                }
-                Expression::Sequence(_)
-                | Expression::Unary { .. }
-                | Expression::Binary { .. }
-                | Expression::Stub => assert!(is_value(&left) && false),
             },
             Binary::Assign => match left {
                 Expression::Undefined => self.solve(Expression::Undefined),
@@ -560,10 +474,10 @@ impl Machine {
                     self.store_element(address, offset, right);
                     self.solve(Expression::PointerIntoList { address, offset });
                 }
-                Expression::Sequence(_)
-                | Expression::Unary { .. }
-                | Expression::Binary { .. }
-                | Expression::Stub => assert!(is_value(&left) && false),
+                expr => {
+                    warn!("Unimplemented for {}", expr);
+                    self.solve(Expression::Undefined);
+                }
             },
             Binary::CallWith => match left {
                 Expression::Undefined => self.solve(Expression::Undefined),
@@ -577,18 +491,10 @@ impl Machine {
                     // ...after storing the argument list.
                     self.set_called_with(right);
                 }
-                Expression::List(_) => {
-                    // TODO ???
-                    unimplemented!()
+                expr => {
+                    warn!("Unimplemented for {}", expr);
+                    self.solve(Expression::Undefined);
                 }
-                Expression::PointerIntoList { .. } => {
-                    // This has to match the behavior above.
-                    unimplemented!()
-                }
-                Expression::Sequence(_)
-                | Expression::Unary { .. }
-                | Expression::Binary { .. }
-                | Expression::Stub => assert!(is_value(&left) && false),
             },
             Binary::Abort => {
                 println!("Aborting program");
