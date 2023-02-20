@@ -5,8 +5,11 @@ layout: default
 # Numpad
 
 A dynamically typed expression language that can be programmed using just one hand on the numpad.
-
 Created by Remy Pierre Bushnell Clarke and Sander in 't Veld.
+
+[![Demo on YouTube](http://img.youtube.com/vi/0ftXhx-7Ffs/0.jpg)](http://www.youtube.com/watch?v=0ftXhx-7Ffs "Numpad demo: printing A-Z")
+
+[Watch Sander demo the language using the REPL.](http://www.youtube.com/watch?v=0ftXhx-7Ffs "Numpad demo: printing A-Z")
 
 ## Hello world
 
@@ -65,18 +68,12 @@ Uhm, ok, maybe not *that* easy. But sure enough, this outputs:
 Output: list [(1), (11), (16), (20), (40), ]
 ```
 
-Still not convinced?
-
-[Watch Sander code a program live using only the numpad.](http://www.youtube.com/watch?v=0ftXhx-7Ffs "Numpad demo: printing A-Z")
-
-[![Demo on YouTube](http://img.youtube.com/vi/0ftXhx-7Ffs/0.jpg)](http://www.youtube.com/watch?v=0ftXhx-7Ffs "Numpad demo: printing A-Z")
-
 ## Syntax
 
 Although not part of the language proper because they cannot be typed on a numpad, comments can be useful to clarify things.
 
 ```
-(Comments use paired parenthesis on the same line.)
+(Comments use paired parentheses on the same line.)
 (The should only be used to annotate source code.)
 ```
 
@@ -95,6 +92,8 @@ There are no negative literals, but there are unary operators.
 
 ### Unary Operators
 
+Because the numpad only has five symbols on it, the number of operators is limited. We repurpose the four mathematical operators (`+-*/`) and use a dot to create three additional operators.
+
 ```
 *     (Fetch)
 +     (Signum / copy list)
@@ -106,18 +105,22 @@ There are no negative literals, but there are unary operators.
 *.    (Print unicode-scalar values)
 ```
 
+The dot (`.`) is not an operator and always appears next to something else.
+
 ### Binary Operators
+
+Each of the main unary operators doubles as a binary operator.
 
 ```
 +     (Addition)
 *     (Multiplication)
--     (Assign to register)
+-     (Assign to address)
 /     (Call function with arguments)
 ```
 
 ### Evaluation Order
 
-There is no operator precedence. Evaluation of expressions is right to left.
+There is no operator precedence. Evaluation of expressions happens right to left.
 
 ```
 -2    (-2)
@@ -129,13 +132,13 @@ There is no operator precedence. Evaluation of expressions is right to left.
 You can combine unary and binary operators to do division and subtraction:
 
 ```
-100+-5 (100-5)
-100*/5 (100/5)
+100+-5 (95)
+100*/5 (20)
 ```
 
 ### Nested expression
 
-Expressions can be wrapped with the "parentheses" `/.` and `./`.
+Expressions can be wrapped with brackets, which are written `/.` and `./`.
 
 ```
 /.0./      (0)
@@ -144,7 +147,7 @@ Expressions can be wrapped with the "parentheses" `/.` and `./`.
 
 ### Instructions
 
-Numpad code consists of a list of instructions. Each instruction is a number (its address) followed by an expression.
+All code consists of a list of instructions. Each instruction is a number (its address) followed by a separator `..` and then an expression.
 
 ```
 100..500
@@ -154,7 +157,7 @@ Numpad code consists of a list of instructions. Each instruction is a number (it
 
 ### Entry point
 
-The entry point of a Numpad program is address **1**. When using the [REPL](#Start-a-REPL), the expression at address **1** is evaluated every time you submit code.
+The entry point of a Numpad program is address **1**. When using the [REPL](#start-a-repl), the expression at address **1** is evaluated every time you submit code.
 
 ```
 | 1..4+5
@@ -199,25 +202,25 @@ Note that this language is Turing complete, thus there is no protection against 
 ### Lists
 
 In addition to numbers, Numpad also supports lists.
-A list consists of 0 or more expressions separated by `..`, surrounded by parentheses.
+A list consists of zero or more expressions separated by `..`, surrounded by brackets.
 
 ```
 /../         (empty list)
 /.0..1+1./   (list with two elements)
 ```
 
-For a list of length 1, use an `..` to avoid creating a nested expression.
+For a list of length 1, use an explicit `..` to avoid creating a nested expression.
 
 ```
-/.0.../      (list [0] with a trailing .. separator)
-/.0....2./   (you can even have multiple separators between values)
-             (this has legth 2)
+/.0.../      (list of length 1 with a trailing .. separator)
+             (you can even have multiple separators between values)
+/.0....2./   (list of length 2)
 ```
 
 You can get the length of a list with unary `-`. In the REPL:
 
 ```
-| 1..-/.1..2..3./
+| 1..-/.10..20..30./
 |
 Output: (3)
 ```
@@ -241,10 +244,10 @@ List elements are only evaluated when you retrieve them from the head of the lis
 Output: (107)
 ```
 
-To retrieve other elements, using binary `+` to skip elements first.
+To retrieve other elements, use binary `+` to skip elements first.
 
 ```
-| 1..**2                             (fetch the list, then get the head)
+| 1..**2                             (fetch the list, then the head)
 | 2..3+/.0..10..20..30..40..50./     (this becomes /.30..40..50./)
 |
 Output: (30)
@@ -264,7 +267,7 @@ Output: (5)
 ### Statements
 
 An instruction may contain multiple "statements", separated by `..`, that are evaluated before its expression.
-The main use for this is to assign values to registers using unary `-`:
+The main use for this is to assign values to addresses using binary `-`:
 
 ```
 | 1 .. 100 - 5 .. *100
@@ -275,13 +278,22 @@ Output: (5)
 Output: (5)
 ```
 
-You can think of this as writing to "variables", but essentially you are writing directly to memory.
 
-Another useful statement is printing a Unicode character:
+You can think of this as writing to "variables", but essentially you are writing directly to memory.
+Note that assigning a value to an address already containing an expression with overwrite it.
 
 ```
-| 1 .. *. 72 .. *2
-| 2 .. *. 10 .. 5
+| 1 .. 2 - 5 .. *2
+| 2 .. 485+293
+|
+Output: (5)
+```
+
+Another useful statement is printing a Unicode character using unary `*.`:
+
+```
+| 1 .. *. 72 .. *2      (print ascii character 72: 'H')
+| 2 .. *. 10 .. 5       (print ascii character 10: line feed)
 |
 H
 Output: (5)
@@ -295,7 +307,7 @@ Unlike expressions, evaluation of statements is left to right.
 ```
 
 Newlines and other whitespace may be added anywhere in the source code.
-Statements spread out over multiple lines are evaluated top to bottom.
+Instructions spread out over multiple lines are evaluated top to bottom.
 
 ```
 1       (EntryPoint)
@@ -319,7 +331,7 @@ Lazy evaluation allows you to do conditional computation:
 Output: (100)
 ```
 
-By combining this trick with the carefully placement of values at certain addresses, you can implement any algorithm you want. Here is an algorithm that prints the alphabet:
+By combining this trick with the carefully placement of values at certain addresses, you can implement any algorithm you want. Here's one that prints the alphabet:
 
 ```
 1
@@ -338,7 +350,7 @@ By combining this trick with the carefully placement of values at certain addres
 ```
 
 The example above doesn't declare the instructions at addresses 2 and 4, but instead uses the binary `-` operator to assign to them directly.
-By convention, algorithms are stored at round numbers (10, 20, 100, 500, etcetera) so that they can use the following addresses (11, 12, 13, etcetera in the case of 10) to store temporary values.
+By convention, algorithms are stored at multiples of ten so that they can use the following addresses (11, 12, 13, etcetera for the algorithm stored at 10) to store temporary values.
 
 In fact, you could use this convention to supply "arguments" to an algorithm.
 
