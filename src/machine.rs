@@ -374,9 +374,12 @@ impl Machine {
             Unary::Print => match operand {
                 Expression::Undefined => self.solve(Expression::Undefined),
                 Expression::Number(number) => {
-                    let c: u32 = number.round().abs() as u32;
-                    print!("{}", unsafe { char::from_u32_unchecked(c) });
-                    self.solve(operand);
+                    if let Some(c) = self.char_from_number(number) {
+                        print!("{}", c);
+                        self.solve(operand);
+                    } else {
+                        self.solve(Expression::Undefined);
+                    }
                 }
                 Expression::List(_) => {
                     // lists are lazy
@@ -628,19 +631,32 @@ impl Machine {
     }
 
     fn address_from_number(&self, number: Float) -> Option<usize> {
+        let address = self.u32_from_number(number)?;
+        Some(address as usize)
+    }
+
+    fn char_from_number(&self, number: Float) -> Option<char> {
+        let codepoint: u32 = self.u32_from_number(number)?;
+        char::from_u32(codepoint).or_else(|| {
+            error!("Codepoint is invalid: {}", number);
+            None
+        })
+    }
+
+    fn u32_from_number(&self, number: Float) -> Option<u32> {
         if number.is_normal() {
             if number < 0.5 {
                 Some(0)
             } else if number < u32::MAX as f64 {
-                Some(number as u32 as usize)
+                Some(number as u32)
             } else {
-                error!("Address value is too high: {}", number);
+                error!("Value is too high: {}", number);
                 None
             }
         } else if number == 0.0 {
             Some(0)
         } else {
-            error!("Address value is abnormal: {}", number);
+            error!("Value is abnormal: {}", number);
             None
         }
     }

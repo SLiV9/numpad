@@ -74,7 +74,7 @@ Although not part of the language proper because they cannot be typed on a numpa
 
 ```
 (Comments use paired parentheses on the same line.)
-(The should only be used to annotate source code.)
+(They should only be used to annotate source code.)
 ```
 
 We will use them below to explain the syntax.

@@ -3,6 +3,8 @@
 
 A dynamically typed expression language that can be programmed using just one hand on the numpad.
 
+![Simple sort](examples/simple_sort_highlighted.png)
+
 ## Hello world
 
 The following program prints "Hello world!" and then calculates 1+1:
@@ -25,6 +27,9 @@ Easy right? Next we'll try sorting a list with 5 elements:
 110..104-1+*104..*107
 111..103-1+*103..104-0..*106
 ```
+
+Uhm, ok, maybe not *that* easy.
+[A full breakdown of the language is available on Numpad's website.](https://sliv9.github.io/numpad/)
 
 ## Build
 

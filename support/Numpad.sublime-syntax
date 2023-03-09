@@ -1,0 +1,36 @@
+%YAML 1.2
+---
+# See http://www.sublimetext.com/docs/3/syntax.html
+name: Numpad
+file_extensions:
+  - num
+scope: source.numpad
+
+contexts:
+  main:
+    - match: '\([^\)]*\)'
+      scope: comment.block.numpad
+    - match: '^[0-9][0-9 \t]*(\.[0-9][0-9 \t]+)?'
+      scope: entity.name.function.numpad
+    - match: '\*[0-9][0-9 \t]*(\.[0-9][0-9 \t]+)?'
+      scope: variable.function.numpad
+    - match: '\*(?=[\/\*])'
+      scope: variable.function.numpad
+    - match: '([0-9][0-9 \t]*(\.[0-9][0-9 \t]+)?)[ \t]*(\/)'
+      captures:
+        1: variable.function.numpad
+        3: keyword.operator.numpad
+    - match: '([0-9][0-9 \t]*(\.[0-9][0-9 \t]+)?)[ \t]*(\-)'
+      captures:
+        1: variable.parameter.numpad
+        3: keyword.operator.numpad
+    - match: '[0-9][0-9 \t]*(\.[0-9][0-9 \t]+)?'
+      scope: constant.numeric.numpad
+    - match: '\/\.'
+      scope: punctuation.section.parens.begin.numpad
+    - match: '\.\/'
+      scope: punctuation.section.parens.end.numpad
+    - match: '\.\.'
+      scope: punctuation.separator.numpad
+    - match: '\+\.|\-\.|\*\.|\+|\-|\/|\*'
+      scope: keyword.operator.numpad

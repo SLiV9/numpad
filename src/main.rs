@@ -4,6 +4,8 @@
 // License: MIT
 //
 
+#![forbid(unsafe_code)]
+
 mod common;
 mod lexer;
 mod machine;
