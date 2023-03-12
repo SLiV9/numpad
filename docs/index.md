@@ -112,10 +112,10 @@ The dot (`.`) is not an operator and always appears next to something else.
 Each of the main unary operators doubles as a binary operator.
 
 ```
-+     (Addition)
++     (Addition / skip list elements)
 *     (Multiplication)
--     (Assign to address)
-/     (Call function with arguments)
+-     (Assign to address / assign to list element)
+/     (Call function with argument)
 ```
 
 ### Evaluation Order
@@ -280,13 +280,31 @@ Output: (5)
 
 
 You can think of this as writing to "variables", but essentially you are writing directly to memory.
-Note that assigning a value to an address already containing an expression with overwrite it.
+Note that assigning a value to an address already containing an expression will overwrite it.
 
 ```
 | 1 .. 2 - 5 .. *2
 | 2 .. 485+293
 |
 Output: (5)
+```
+
+Lists are fetched by reference and can be mutated by assigning to them.
+
+```
+| 1 .. /./.*2./+1./ - 55 .. *2
+| 2 .. /.10..20..30./
+|
+Output: list [(10), (55), (30), ]
+```
+
+It is also possible to append to a list by assigning to the *one past the end* position.
+
+```
+| 1 .. /./.*2./+3./ - 55 .. *2
+| 2 .. /.10..20..30./
+|
+Output: list [(10), (20), (30), (55), ]
 ```
 
 Another useful statement is printing a Unicode character using unary `*.`:
@@ -331,7 +349,7 @@ Lazy evaluation allows you to do conditional computation:
 Output: (100)
 ```
 
-By combining this trick with the carefully placement of values at certain addresses, you can implement any algorithm you want. Here's one that prints the alphabet:
+By combining this trick with the careful placement of values at certain addresses, you can implement any algorithm you want. Here's one that prints the alphabet:
 
 ```
 1
@@ -365,7 +383,7 @@ In fact, you could use this convention to supply "arguments" to an algorithm.
 
 ### Functions
 
-To make life a little easier, you can instead declare "functions". In Numpad, a functions is an expression that tries to retrieve its own argument(s) by fetching *itself*. Behold!
+To make life a little easier, you can instead declare "functions". In Numpad, a function is an expression that tries to retrieve its own argument(s) by fetching *itself*. Behold!
 
 ```
 9000 .. 50 + *9000
@@ -503,7 +521,7 @@ Output: (24.25)
 Output: (24)
 ```
 
-The first time you run the REPL, it will create a `history.txt` file in the currenct directory.
+The first time you run the REPL, it will create a `history.txt` file in the current directory.
 You can use the arrow keys to browse your REPL input history while the REPL is running.
 
 ### Command line interface
